@@ -36,4 +36,4 @@ st.title("Go Game - Streamlit App")
 
 # Display the board
 board_image = draw_board()
-st.image(board_image, caption="Go Board", use_column_width=True)
+st.image(board_image, caption="Go Board", use_container_width=True)
