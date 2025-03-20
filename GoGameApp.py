@@ -47,24 +47,39 @@ except TypeError as e:
 
 st.title("Go Game - Streamlit App")
 
+if 'game_started' not in st.session_state:
+    st.session_state.game_started = False
 if 'game_state' not in st.session_state:
     st.session_state.game_state = game.get_board()
     st.session_state.current_player = 1  # Start with Black
 
-# Display the board and handle user clicks
-click_event = st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
+# Start game button
+if st.button("Start Game"):
+    st.session_state.game_started = True
+    st.session_state.game_state = game.get_board()
+    st.session_state.current_player = 1
+    st.rerun()
 
-if click_event:
-    x, y = st.session_state.get("last_click", (-1, -1))
-    if x >= 0 and y >= 0:
-        if game.place_stone(x, y):
-            st.session_state.game_state = game.get_board()
-            st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
-            
-            # AI Move (Random move for now, can be replaced with a real AI algorithm)
-            empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
-            if empty_positions:
-                ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
-                game.place_stone(ai_x, ai_y)
+# Finish game button
+if st.button("Finish Game"):
+    st.session_state.game_started = False
+    st.write("Game Over! Thank you for playing.")
+
+if st.session_state.game_started:
+    # Display the board and handle user clicks
+    click_event = st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
+    
+    if click_event:
+        x, y = st.session_state.get("last_click", (-1, -1))
+        if x >= 0 and y >= 0:
+            if game.place_stone(x, y):
                 st.session_state.game_state = game.get_board()
-                st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
+                st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
+                
+                # AI Move (Random move for now, can be replaced with a real AI algorithm)
+                empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
+                if empty_positions:
+                    ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
+                    game.place_stone(ai_x, ai_y)
+                    st.session_state.game_state = game.get_board()
+                    st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
