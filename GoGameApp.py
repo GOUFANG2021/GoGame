@@ -22,18 +22,20 @@ def draw_board(board_state):
     draw = ImageDraw.Draw(board)
     
     # Draw grid
-    for i in range(1, BOARD_SIZE):
-        line_position = i * CELL_SIZE
-        draw.line([(line_position, 0), (line_position, BOARD_PIXEL_SIZE)], fill='black', width=1)
-        draw.line([(0, line_position), (BOARD_PIXEL_SIZE, line_position)], fill='black', width=1)
+    for i in range(BOARD_SIZE):
+        line_position = i * CELL_SIZE + CELL_SIZE // 2
+        draw.line([(line_position, CELL_SIZE // 2), (line_position, BOARD_PIXEL_SIZE - CELL_SIZE // 2)], fill='black', width=1)
+        draw.line([(CELL_SIZE // 2, line_position), (BOARD_PIXEL_SIZE - CELL_SIZE // 2, line_position)], fill='black', width=1)
     
-    # Draw stones
+    # Draw stones at the line intersections
     for x in range(BOARD_SIZE):
         for y in range(BOARD_SIZE):
             if board_state[x][y] == 1:
-                draw.ellipse([(y * CELL_SIZE + 5, x * CELL_SIZE + 5), ((y + 1) * CELL_SIZE - 5, (x + 1) * CELL_SIZE - 5)], fill='black')
+                draw.ellipse([(y * CELL_SIZE + CELL_SIZE // 2 - 10, x * CELL_SIZE + CELL_SIZE // 2 - 10), 
+                              (y * CELL_SIZE + CELL_SIZE // 2 + 10, x * CELL_SIZE + CELL_SIZE // 2 + 10)], fill='black')
             elif board_state[x][y] == 2:
-                draw.ellipse([(y * CELL_SIZE + 5, x * CELL_SIZE + 5), ((y + 1) * CELL_SIZE - 5, (x + 1) * CELL_SIZE - 5)], fill='white')
+                draw.ellipse([(y * CELL_SIZE + CELL_SIZE // 2 - 10, x * CELL_SIZE + CELL_SIZE // 2 - 10), 
+                              (y * CELL_SIZE + CELL_SIZE // 2 + 10, x * CELL_SIZE + CELL_SIZE // 2 + 10)], fill='white')
     
     return board
 
@@ -49,28 +51,20 @@ if 'game_state' not in st.session_state:
     st.session_state.game_state = game.get_board()
     st.session_state.current_player = 1  # Start with Black
 
-# Display the board
-board_image = draw_board(st.session_state.game_state)
-st.image(board_image, caption="Go Board", use_container_width=True)
+# Display the board and handle user clicks
+click_event = st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
 
-# User move
-col1, col2 = st.columns(2)
-with col1:
-    x = st.number_input("Enter row (0-18)", min_value=0, max_value=18, step=1, key="row")
-with col2:
-    y = st.number_input("Enter column (0-18)", min_value=0, max_value=18, step=1, key="col")
-
-if st.button("Place Stone"):
-    if game.place_stone(x, y):
-        st.session_state.game_state = game.get_board()
-        board_image = draw_board(st.session_state.game_state)
-        st.image(board_image, caption="Go Board", use_container_width=True)
-
-        # AI Move (Random for now, can be improved with an actual AI algorithm)
-        empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
-        if empty_positions:
-            ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
-            game.place_stone(ai_x, ai_y)
+if click_event:
+    x, y = st.session_state.get("last_click", (-1, -1))
+    if x >= 0 and y >= 0:
+        if game.place_stone(x, y):
             st.session_state.game_state = game.get_board()
-            board_image = draw_board(st.session_state.game_state)
-            st.image(board_image, caption="Go Board (AI Played)", use_container_width=True)
+            st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
+            
+            # AI Move (Random move for now, can be replaced with a real AI algorithm)
+            empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
+            if empty_positions:
+                ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
+                game.place_stone(ai_x, ai_y)
+                st.session_state.game_state = game.get_board()
+                st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
