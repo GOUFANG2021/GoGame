@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 from PIL import Image, ImageDraw
 import sys
+from streamlit_drawable_canvas import st_canvas
 
 # GoGame Logic Implementation
 class GoGame:
@@ -9,8 +10,6 @@ class GoGame:
         self.size = size
         self.board = np.zeros((size, size), dtype=int)  # 0 = empty, 1 = black, 2 = white
         self.current_player = 1  # Black starts first
-        self.previous_board = None  # Used for Ko rule
-        self.pass_count = 0  # Track consecutive passes
 
     def switch_player(self):
         """Switch turn between players"""
@@ -25,11 +24,8 @@ class GoGame:
         if not self.is_valid_move(x, y):
             return False
         
-        self.previous_board = self.board.copy()
         self.board[x, y] = self.current_player
-        
         self.switch_player()
-        self.pass_count = 0
         return True
 
     def get_board(self):
@@ -64,60 +60,66 @@ def draw_board(board_state):
     
     return board
 
-# Initialize GoGame instance
-game = GoGame(size=BOARD_SIZE)
-
-st.title("Go Game - Streamlit App")
-
-if 'game_started' not in st.session_state:
-    st.session_state.game_started = False
+# Initialize game instance
+if 'game' not in st.session_state:
+    st.session_state.game = GoGame(size=BOARD_SIZE)
 if 'game_state' not in st.session_state:
-    st.session_state.game_state = game.get_board()
+    st.session_state.game_state = st.session_state.game.get_board()
 if 'player_color' not in st.session_state:
     st.session_state.player_color = 1  # Default to black
 
-# Choose player color
+st.title("Go Game - Streamlit App")
+
 if not st.session_state.game_started:
     st.session_state.player_color = st.radio("Choose your color:", [1, 2], format_func=lambda x: "Black" if x == 1 else "White")
 
-# Buttons to Start and Finish Game
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("Start Game"):
-        st.session_state.game_started = True
-        game = GoGame(size=BOARD_SIZE)
-        st.session_state.game_state = game.get_board()
-        if st.session_state.player_color == 2:
-            empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
-            if empty_positions:
-                ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
-                game.place_stone(ai_x, ai_y)
-                st.session_state.game_state = game.get_board()
-        st.rerun()
-
-with col2:
-    if st.button("Finish Game"):
-        st.session_state.game_started = False
-        st.write("Game Over! Thank you for playing.")
-        st.stop()
+if st.button("Start Game"):
+    st.session_state.game_started = True
+    st.session_state.game = GoGame(size=BOARD_SIZE)
+    st.session_state.game_state = st.session_state.game.get_board()
+    if st.session_state.player_color == 2:
+        empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if st.session_state.game.board[i][j] == 0]
+        if empty_positions:
+            ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
+            st.session_state.game.place_stone(ai_x, ai_y)
+            st.session_state.game_state = st.session_state.game.get_board()
+    st.rerun()
 
 if st.session_state.game_started:
     # Display the board and handle user clicks
     board_image = draw_board(st.session_state.game_state)
     st.image(board_image, caption="Go Board", use_container_width=True)
     
-    click_x = st.slider("Select X Coordinate (0-18)", 0, 18, 9)
-    click_y = st.slider("Select Y Coordinate (0-18)", 0, 18, 9)
+    # Capture user click input using Streamlit canvas
+    canvas_result = st_canvas(
+        fill_color="rgba(0, 0, 0, 0)",
+        stroke_width=1,
+        stroke_color="#000000",
+        background_image=board_image,
+        update_streamlit=True,
+        height=BOARD_PIXEL_SIZE,
+        width=BOARD_PIXEL_SIZE,
+        drawing_mode="point",
+        key="canvas",
+    )
     
-    if st.button("Place Stone"):
-        if game.place_stone(click_x, click_y):
-            st.session_state.game_state = game.get_board()
+    if canvas_result.json_data is not None:
+        for obj in canvas_result.json_data["objects"]:
+            x, y = int(obj["left"]), int(obj["top"])
             
-            # AI Move (Random move for now, can be replaced with a real AI algorithm)
-            empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
-            if empty_positions:
-                ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
-                game.place_stone(ai_x, ai_y)
-                st.session_state.game_state = game.get_board()
-                
-            st.rerun()
+            # Convert pixel coordinates to board indices
+            board_x = round((y - CELL_SIZE // 2) / CELL_SIZE)
+            board_y = round((x - CELL_SIZE // 2) / CELL_SIZE)
+            
+            if 0 <= board_x < BOARD_SIZE and 0 <= board_y < BOARD_SIZE:
+                if st.session_state.game.place_stone(board_x, board_y):
+                    st.session_state.game_state = st.session_state.game.get_board()
+                    
+                    # AI Move
+                    empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if st.session_state.game.board[i][j] == 0]
+                    if empty_positions:
+                        ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
+                        st.session_state.game.place_stone(ai_x, ai_y)
+                        st.session_state.game_state = st.session_state.game.get_board()
+                        
+                    st.rerun()
