@@ -14,9 +14,7 @@ class GoGame:
 
     def is_valid_move(self, x, y):
         """Check if move is valid"""
-        if self.board[x, y] != 0:
-            return False  # Position already occupied
-        return True
+        return 0 <= x < self.size and 0 <= y < self.size and self.board[x, y] == 0
 
     def place_stone(self, x, y):
         """Attempt to place a stone on the board"""
@@ -47,9 +45,7 @@ class GoGame:
         
         def dfs(i, j, group):
             """Depth-first search to find connected stones"""
-            if (i, j) in visited:
-                return
-            if not (0 <= i < self.size and 0 <= j < self.size):
+            if (i, j) in visited or not (0 <= i < self.size and 0 <= j < self.size):
                 return
             if self.board[i, j] == 0:
                 group.clear()
@@ -87,16 +83,8 @@ class GoGame:
 
     def get_board(self):
         """Return the current state of the board"""
-        return self.board
+        return self.board.tolist()
 
     def is_game_over(self):
         """Check if the game is over (two consecutive passes)"""
         return self.pass_count >= 2
-
-# Example Usage:
-if __name__ == "__main__":
-    game = GoGame(size=9)  # Initialize a 9x9 board
-    game.place_stone(4, 4)  # Black moves
-    game.place_stone(4, 5)  # White moves
-    print(game.get_board())
-
