@@ -61,7 +61,7 @@ with col1:
         game = GoGame(size=BOARD_SIZE)
         st.session_state.game_state = game.get_board()
         st.session_state.current_player = 1
-        st.rerun()
+        st.experimental_rerun()
 
 with col2:
     if st.button("Finish Game"):
