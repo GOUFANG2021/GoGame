@@ -108,4 +108,3 @@ if st.session_state.game_started:
                         game.place_stone(ai_x, ai_y)
                         st.session_state.game_state = game.get_board()
                         st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
-
