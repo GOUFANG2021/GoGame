@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 from PIL import Image, ImageDraw
 import sys
+from streamlit_drawable_canvas import st_canvas
 
 # Ensure go_logic is in the Python path
 sys.path.append('/mount/src/gogame/')
@@ -74,20 +75,37 @@ if st.session_state.game_started:
     board_image = draw_board(st.session_state.game_state)
     st.image(board_image, caption="Go Board", use_container_width=True)
     
-    # Capture user click input
-    click_location = st.image(board_image, caption="Click on the board to place a stone", use_container_width=True)
+    # Capture user click input using Streamlit canvas
+    canvas_result = st_canvas(
+        fill_color="rgba(0, 0, 0, 0)",
+        stroke_width=1,
+        stroke_color="#000000",
+        background_image=board_image,
+        update_streamlit=True,
+        height=BOARD_PIXEL_SIZE,
+        width=BOARD_PIXEL_SIZE,
+        drawing_mode="point",
+        key="canvas",
+    )
     
-    if 'last_click' in st.session_state:
-        x, y = st.session_state.last_click
-        if game.place_stone(x, y):
-            st.session_state.game_state = game.get_board()
-            board_image = draw_board(st.session_state.game_state)
-            st.image(board_image, caption="Go Board", use_container_width=True)
+    if canvas_result.json_data is not None:
+        for obj in canvas_result.json_data["objects"]:
+            x, y = int(obj["left"]), int(obj["top"])
             
-            # AI Move (Random move for now, can be replaced with a real AI algorithm)
-            empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
-            if empty_positions:
-                ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
-                game.place_stone(ai_x, ai_y)
-                st.session_state.game_state = game.get_board()
-                st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
+            # Convert pixel coordinates to board indices
+            board_x = round((y - CELL_SIZE // 2) / CELL_SIZE)
+            board_y = round((x - CELL_SIZE // 2) / CELL_SIZE)
+            
+            if 0 <= board_x < BOARD_SIZE and 0 <= board_y < BOARD_SIZE:
+                if game.place_stone(board_x, board_y):
+                    st.session_state.game_state = game.get_board()
+                    st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
+                    
+                    # AI Move (Random move for now, can be replaced with a real AI algorithm)
+                    empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
+                    if empty_positions:
+                        ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
+                        game.place_stone(ai_x, ai_y)
+                        st.session_state.game_state = game.get_board()
+                        st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
+
