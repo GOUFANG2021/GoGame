@@ -2,15 +2,39 @@ import streamlit as st
 import numpy as np
 from PIL import Image, ImageDraw
 import sys
-from streamlit_drawable_canvas import st_canvas
 
-# Ensure go_logic is in the Python path
-sys.path.append('/mount/src/gogame/')
+# GoGame Logic Implementation
+class GoGame:
+    def __init__(self, size=19):
+        self.size = size
+        self.board = np.zeros((size, size), dtype=int)  # 0 = empty, 1 = black, 2 = white
+        self.current_player = 1  # Black starts first
+        self.previous_board = None  # Used for Ko rule
+        self.pass_count = 0  # Track consecutive passes
 
-try:
-    from go_logic import GoGame
-except ModuleNotFoundError:
-    st.error("Module 'go_logic' not found. Ensure it exists in the project directory.")
+    def switch_player(self):
+        """Switch turn between players"""
+        self.current_player = 3 - self.current_player  # Toggle between 1 (Black) and 2 (White)
+
+    def is_valid_move(self, x, y):
+        """Check if move is valid"""
+        return 0 <= x < self.size and 0 <= y < self.size and self.board[x, y] == 0
+
+    def place_stone(self, x, y):
+        """Attempt to place a stone on the board"""
+        if not self.is_valid_move(x, y):
+            return False
+        
+        self.previous_board = self.board.copy()
+        self.board[x, y] = self.current_player
+        
+        self.switch_player()
+        self.pass_count = 0
+        return True
+
+    def get_board(self):
+        """Return the current state of the board"""
+        return self.board.tolist()
 
 # Board settings
 BOARD_SIZE = 19  # Go board 19x19
@@ -41,10 +65,7 @@ def draw_board(board_state):
     return board
 
 # Initialize GoGame instance
-try:
-    game = GoGame(size=BOARD_SIZE)
-except TypeError as e:
-    st.error(f"Error initializing GoGame: {e}")
+game = GoGame(size=BOARD_SIZE)
 
 st.title("Go Game - Streamlit App")
 
@@ -75,36 +96,32 @@ if st.session_state.game_started:
     board_image = draw_board(st.session_state.game_state)
     st.image(board_image, caption="Go Board", use_container_width=True)
     
-    # Capture user click input using Streamlit canvas
-    canvas_result = st_canvas(
-        fill_color="rgba(0, 0, 0, 0)",
-        stroke_width=1,
-        stroke_color="#000000",
-        background_image=board_image,
-        update_streamlit=True,
-        height=BOARD_PIXEL_SIZE,
-        width=BOARD_PIXEL_SIZE,
-        drawing_mode="point",
-        key="canvas",
-    )
+    # User Instructions
+    st.write("Click on the board where you want to place your stone.")
     
-    if canvas_result.json_data is not None:
-        for obj in canvas_result.json_data["objects"]:
-            x, y = int(obj["left"]), int(obj["top"])
+    # Manually enter row/column as a fallback
+    col1, col2 = st.columns(2)
+    with col1:
+        x = st.number_input("Enter row (0-18)", min_value=0, max_value=18, step=1, key="row")
+    with col2:
+        y = st.number_input("Enter column (0-18)", min_value=0, max_value=18, step=1, key="col")
+    
+    if st.button("Place Stone"):
+        if game.place_stone(x, y):
+            st.session_state.game_state = game.get_board()
+            st.image(draw_board(st.session_state.game_state), caption="Updated Go Board", use_container_width=True)
             
-            # Convert pixel coordinates to board indices
-            board_x = round((y - CELL_SIZE // 2) / CELL_SIZE)
-            board_y = round((x - CELL_SIZE // 2) / CELL_SIZE)
-            
-            if 0 <= board_x < BOARD_SIZE and 0 <= board_y < BOARD_SIZE:
-                if game.place_stone(board_x, board_y):
-                    st.session_state.game_state = game.get_board()
-                    st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
-                    
-                    # AI Move (Random move for now, can be replaced with a real AI algorithm)
-                    empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
-                    if empty_positions:
-                        ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
-                        game.place_stone(ai_x, ai_y)
-                        st.session_state.game_state = game.get_board()
-                        st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
+            # AI Move (Random move for now, can be replaced with a real AI algorithm)
+            empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
+            if empty_positions:
+                ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
+                game.place_stone(ai_x, ai_y)
+                st.session_state.game_state = game.get_board()
+                st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
+
+# Debugging assistance
+st.write("### Troubleshooting Guide:")
+st.write("1. Ensure that Streamlit is restarted after installing packages.")
+st.write("2. Run `pip install streamlit` and `pip install numpy pillow` to ensure dependencies are installed.")
+st.write("3. If issues persist, check Python environment by running `which python` or `where python`.")
+st.write("4. If running in a virtual environment, activate it first with `source venv/bin/activate` (Mac/Linux) or `venv\\Scripts\\activate` (Windows).")
