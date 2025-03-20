@@ -73,7 +73,12 @@ if 'game_started' not in st.session_state:
     st.session_state.game_started = False
 if 'game_state' not in st.session_state:
     st.session_state.game_state = game.get_board()
-    st.session_state.current_player = 1  # Start with Black
+if 'player_color' not in st.session_state:
+    st.session_state.player_color = 1  # Default to black
+
+# Choose player color
+if not st.session_state.game_started:
+    st.session_state.player_color = st.radio("Choose your color:", [1, 2], format_func=lambda x: "Black" if x == 1 else "White")
 
 # Buttons to Start and Finish Game
 col1, col2 = st.columns(2)
@@ -82,7 +87,12 @@ with col1:
         st.session_state.game_started = True
         game = GoGame(size=BOARD_SIZE)
         st.session_state.game_state = game.get_board()
-        st.session_state.current_player = 1
+        if st.session_state.player_color == 2:
+            empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
+            if empty_positions:
+                ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
+                game.place_stone(ai_x, ai_y)
+                st.session_state.game_state = game.get_board()
         st.rerun()
 
 with col2:
@@ -96,20 +106,12 @@ if st.session_state.game_started:
     board_image = draw_board(st.session_state.game_state)
     st.image(board_image, caption="Go Board", use_container_width=True)
     
-    # User Instructions
-    st.write("Click on the board where you want to place your stone.")
-    
-    # Manually enter row/column as a fallback
-    col1, col2 = st.columns(2)
-    with col1:
-        x = st.number_input("Enter row (0-18)", min_value=0, max_value=18, step=1, key="row")
-    with col2:
-        y = st.number_input("Enter column (0-18)", min_value=0, max_value=18, step=1, key="col")
+    click_x = st.slider("Select X Coordinate (0-18)", 0, 18, 9)
+    click_y = st.slider("Select Y Coordinate (0-18)", 0, 18, 9)
     
     if st.button("Place Stone"):
-        if game.place_stone(x, y):
+        if game.place_stone(click_x, click_y):
             st.session_state.game_state = game.get_board()
-            st.image(draw_board(st.session_state.game_state), caption="Updated Go Board", use_container_width=True)
             
             # AI Move (Random move for now, can be replaced with a real AI algorithm)
             empty_positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE) if game.board[i][j] == 0]
@@ -117,11 +119,5 @@ if st.session_state.game_started:
                 ai_x, ai_y = empty_positions[np.random.randint(len(empty_positions))]
                 game.place_stone(ai_x, ai_y)
                 st.session_state.game_state = game.get_board()
-                st.image(draw_board(st.session_state.game_state), caption="Go Board (AI Played)", use_container_width=True)
-
-# Debugging assistance
-st.write("### Troubleshooting Guide:")
-st.write("1. Ensure that Streamlit is restarted after installing packages.")
-st.write("2. Run `pip install streamlit` and `pip install numpy pillow` to ensure dependencies are installed.")
-st.write("3. If issues persist, check Python environment by running `which python` or `where python`.")
-st.write("4. If running in a virtual environment, activate it first with `source venv/bin/activate` (Mac/Linux) or `venv\\Scripts\\activate` (Windows).")
+                
+            st.rerun()
