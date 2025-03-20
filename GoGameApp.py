@@ -39,7 +39,7 @@ def draw_board(board_state):
     
     return board
 
-# Initialize GoGame instance with AI-enabled
+# Initialize GoGame instance
 try:
     game = GoGame(size=BOARD_SIZE)
 except TypeError as e:
@@ -53,21 +53,28 @@ if 'game_state' not in st.session_state:
     st.session_state.game_state = game.get_board()
     st.session_state.current_player = 1  # Start with Black
 
-# Start game button
-if st.button("Start Game"):
-    st.session_state.game_started = True
-    st.session_state.game_state = game.get_board()
-    st.session_state.current_player = 1
-    st.rerun()
+# Buttons to Start and Finish Game
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("Start Game"):
+        st.session_state.game_started = True
+        game = GoGame(size=BOARD_SIZE)
+        st.session_state.game_state = game.get_board()
+        st.session_state.current_player = 1
+        st.rerun()
 
-# Finish game button
-if st.button("Finish Game"):
-    st.session_state.game_started = False
-    st.write("Game Over! Thank you for playing.")
+with col2:
+    if st.button("Finish Game"):
+        st.session_state.game_started = False
+        st.write("Game Over! Thank you for playing.")
+        st.stop()
 
 if st.session_state.game_started:
     # Display the board and handle user clicks
-    click_event = st.image(draw_board(st.session_state.game_state), caption="Go Board", use_container_width=True)
+    board_image = draw_board(st.session_state.game_state)
+    st.image(board_image, caption="Go Board", use_container_width=True)
+    
+    click_event = st.image(board_image, caption="Click on the board to place a stone", use_container_width=True)
     
     if click_event:
         x, y = st.session_state.get("last_click", (-1, -1))
